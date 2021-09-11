@@ -1,16 +1,44 @@
-# This is a sample Python script.
+from fastapi import FastAPI
+import uvicorn
+from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+from apps.video.routers import router as video_router
+from apps.category.routers import router as category_router
+
+app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://10.0.0.238:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+@app.on_event("startup")
+async def startup_db_client():
+    app.mongodb_client = AsyncIOMotorClient(
+        "mongodb://localhost:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false")
+    app.mongodb = app.mongodb_client["vidserver"]
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+app.mount("/files", StaticFiles(directory="static"), name="static")
+app.include_router(video_router, tags=['videos'], prefix='/video')
+app.include_router(category_router, tags=['category'], prefix='/category')
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+if __name__ == "__main__":
+    uvicorn.run(
+        'main:app',
+        host='0.0.0.0',
+        reload=True,
+        port=8000
+    )
