@@ -7,16 +7,25 @@ router = APIRouter()
 
 @router.get("/", response_description="List categories")
 async def list_categories(request: Request):
-    tasks = []
+    categories = []
     for doc in await request.app.mongodb["videos"].distinct("categories"):
-        tasks.append(doc)
-    return tasks
+        categories.append(doc)
+    return categories
 
 
 @router.get("/{category}", response_description="List videos from category")
-async def list_category_videos(category: str, request: Request):
-    tasks = []
+async def list_category_videos(category: str, request: Request, skip: int = 0, limit: int = 10):
+    videos = []
     categories = category.split('+')
-    for doc in await request.app.mongodb["videos"].find({"categories": {"$all": categories}}).to_list(length=100):
-        tasks.append(doc)
-    return tasks
+    total = await request.app.mongodb["videos"].count_documents({"categories": {"$all": categories}})
+    query = await request.app.mongodb["videos"].find({"categories": {"$all": categories}}).skip(
+        skip).to_list(
+        length=limit)
+    for doc in query:
+        videos.append(doc)
+    result = {
+        "total": total,
+        "videos": videos
+    }
+
+    return result
