@@ -23,6 +23,7 @@ class VideoModel(BaseModel):
     duration: int = None
     files: Optional[List[VideoFile]]
     categories: Optional[List[str]] = None
+    libraries: Optional[List[str]] = None
     unlisted: bool = True
     password: Optional[str] = None
 
@@ -50,6 +51,9 @@ class VideoModel(BaseModel):
                     "musical",
                     "1996"
                 },
+                "libraries": {
+                    "patapsco/music"
+                },
                 "unlisted": "False",
             }
         }
@@ -64,6 +68,7 @@ class UpdateVideoModel(BaseModel):
     duration: Optional[int] = None
     files: Optional[List[VideoFile]]
     categories: Optional[List[str]] = None
+    library: Optional[List[str]] = None
     unlisted: Optional[bool] = True
     password: Optional[str] = None
 
@@ -90,6 +95,9 @@ class UpdateVideoModel(BaseModel):
                     "theatre",
                     "musical",
                     "1996"
+                },
+                "libraries": {
+                    "patapsco/music"
                 },
                 "unlisted": "False",
             }
