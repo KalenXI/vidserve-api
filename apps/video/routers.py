@@ -19,9 +19,9 @@ async def create_video(request: Request, video: VideoModel = Body(...)):
 
 
 @router.get("/", response_description="List all videos")
-async def list_videos(request: Request):
+async def list_videos(request: Request, skip: int = 0, limit: int = 10):
     videos = []
-    for doc in await request.app.mongodb["videos"].find().to_list(length=100):
+    for doc in await request.app.mongodb["videos"].find({"unlisted": False}).skip(skip).to_list(length=limit):
         videos.append(doc)
     return videos
 

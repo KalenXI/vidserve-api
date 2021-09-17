@@ -1,3 +1,4 @@
+import pymongo
 from fastapi import APIRouter, Body, Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
@@ -23,21 +24,40 @@ async def create_library(request: Request, library: LibraryModel = Body(...)):
 @router.get("/", response_description="List all public libraries")
 async def list_libraries(request: Request):
     library = []
-    for doc in await request.app.mongodb["libraries"].find({"private": False}).to_list(length=100):
+    for doc in await request.app.mongodb["libraries"].find({"private": False}).sort(
+            "name", pymongo.ASCENDING).to_list(length=100):
         library.append(doc)
     return library
 
 
 @router.get("/{id}", response_description="Get a single library")
-async def show_library(id: str, request: Request, passwd: Optional[str] = None):
+async def show_library(id: str, request: Request, passwd: Optional[str] = None, skip: int = 0, limit: int = 10):
     if (library := await request.app.mongodb["libraries"].find_one({"_id": id})) is not None:
-        if library['private'] == 'False':
-            return library
-        else:
+        if not library['private']:
+            videos = []
+            total = await request.app.mongodb["videos"].count_documents({"unlisted": False, "libraries": id})
+            for doc in await request.app.mongodb["videos"].find({"unlisted": False, "libraries": id}).skip(
+                    skip).to_list(length=limit):
+                videos.append(doc)
+            return {
+                "library": library,
+                "total": total,
+                "videos": videos
+            }
+        elif library['private']:
             if passwd is None:
                 raise HTTPException(status_code=401, detail=f"Unauthorized")
             elif sha256_crypt.verify(passwd, library['password']):
-                return library
+                videos = []
+                total = await request.app.mongodb["videos"].count_documents({"unlisted": False, "libraries": id})
+                for doc in await request.app.mongodb["videos"].find({"unlisted": False, "libraries": id}).skip(
+                        skip).to_list(length=limit):
+                    videos.append(doc)
+                return {
+                    "library": library,
+                    "total": total,
+                    "videos": videos
+                }
             else:
                 raise HTTPException(status_code=401, detail=f"Unauthorized")
 
