@@ -11,6 +11,7 @@ class LibraryModel(BaseModel):
     id: str = Field(default_factory=shortuuid.uuid, alias="_id")
     name: str
     private: bool = False
+    unlisted: bool = False
     password: Optional[str]
     children: Optional[List[str]]
 
@@ -20,7 +21,8 @@ class LibraryModel(BaseModel):
             "example": {
                 "_id": "test_library",
                 "name": "Test Library",
-                "private": "True",
+                "private": "False",
+                "unlisted": "False",
                 "password": "mysecret",
                 "children": {
                     "Subfolder"

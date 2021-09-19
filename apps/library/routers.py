@@ -1,11 +1,15 @@
 import pymongo
-from fastapi import APIRouter, Body, Request, HTTPException, status
+from fastapi import APIRouter, Body, Request, HTTPException, status, Depends, Security
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from typing import Optional
 from passlib.hash import sha256_crypt
+from fastapi_auth0 import Auth0, Auth0User
 
 from .models import LibraryModel, UpdateLibraryModel
+
+auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://10.0.0.238:8000', scopes={'read:test': ''})
+optional_auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://10.0.0.238:8000', auto_error=False)
 
 router = APIRouter()
 
@@ -21,23 +25,65 @@ async def create_library(request: Request, library: LibraryModel = Body(...)):
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_library)
 
 
-@router.get("/", response_description="List all public libraries")
-async def list_libraries(request: Request):
+@router.get("/", response_description="List all libraries", dependencies=[Depends(auth.implicit_scheme)])
+async def list_libraries(request: Request, user: Optional[Auth0User] = Security(optional_auth.get_user)):
     library = []
-    for doc in await request.app.mongodb["libraries"].find({"private": False}).sort(
-            "name", pymongo.ASCENDING).to_list(length=100):
-        library.append(doc)
+    if user is None:
+        for doc in await request.app.mongodb["libraries"].find({"private": False, "unlisted": False}).sort(
+                "name", pymongo.ASCENDING).to_list(length=100):
+            library.append(doc)
+    else:
+        if 'read:all' in user.permissions:
+            for doc in await request.app.mongodb["libraries"].find().sort(
+                    "name", pymongo.ASCENDING).to_list(length=100):
+                library.append(doc)
     return library
 
 
-@router.get("/{id}", response_description="Get a single library")
+@router.get("/root", response_description="List all root libraries", dependencies=[Depends(auth.implicit_scheme)])
+async def list_libraries(request: Request, user: Optional[Auth0User] = Security(optional_auth.get_user)):
+    library = []
+    if user is None:
+        for doc in await request.app.mongodb["libraries"] \
+                .find({"private": False, "unlisted": False, "child_library": False}) \
+                .sort("name", pymongo.ASCENDING).to_list(length=100):
+            library.append(doc)
+    else:
+        if 'read:all' in user.permissions:
+            for doc in await request.app.mongodb["libraries"].find({"child_library": False}).sort(
+                    "name", pymongo.ASCENDING).to_list(length=100):
+                library.append(doc)
+    return library
+
+
+@router.get("/children/{id:path}", response_description="List all root libraries",
+            dependencies=[Depends(auth.implicit_scheme)])
+async def list_library_children(id: str, request: Request,
+                                user: Optional[Auth0User] = Security(optional_auth.get_user)):
+    library = []
+    if user is None:
+        for doc in await request.app.mongodb["libraries"] \
+                .find({"private": False, "unlisted": False, "child_library": True, "parent": id}) \
+                .sort("name", pymongo.ASCENDING).to_list(length=100):
+            library.append(doc)
+    else:
+        if 'read:all' in user.permissions:
+            for doc in await request.app.mongodb["libraries"] \
+                    .find({"child_library": True, "parent": id}) \
+                    .sort("name", pymongo.ASCENDING).to_list(length=100):
+                library.append(doc)
+    return library
+
+
+@router.get("/{id:path}", response_description="Get a single library")
 async def show_library(id: str, request: Request, passwd: Optional[str] = None, skip: int = 0, limit: int = 10):
+    print("Loading library: " + id)
     if (library := await request.app.mongodb["libraries"].find_one({"_id": id})) is not None:
         if not library['private']:
             videos = []
             total = await request.app.mongodb["videos"].count_documents({"unlisted": False, "libraries": id})
-            for doc in await request.app.mongodb["videos"].find({"unlisted": False, "libraries": id}).skip(
-                    skip).to_list(length=limit):
+            for doc in await request.app.mongodb["videos"] \
+                    .find({"unlisted": False, "libraries": id}).skip(skip).to_list(length=limit):
                 videos.append(doc)
             return {
                 "library": library,
