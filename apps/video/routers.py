@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Body, Request, HTTPException, status
+import aiofiles
+import os
+from fastapi import APIRouter, Body, Request, HTTPException, status, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
@@ -16,6 +18,16 @@ async def create_video(request: Request, video: VideoModel = Body(...)):
     )
 
     return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_video)
+
+
+@router.post("/upload", response_description="Upload new video")
+async def create_video(request: Request, id: str, file: UploadFile = File(...)):
+    os.makedirs('static/videos/' + id, exist_ok=True)
+    async with aiofiles.open('static/videos/' + id + '/' + file.filename, 'wb') as out_file:
+        while content := await file.read(1024):  # async read chunk
+            await out_file.write(content)  # async write chunk
+
+    return {"Result": "OK"}
 
 
 @router.get("/", response_description="List all videos")
