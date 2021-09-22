@@ -24,7 +24,7 @@ async def create_video(request: Request, video: VideoModel = Body(...)):
 async def create_video(request: Request, id: str, file: UploadFile = File(...)):
     os.makedirs('static/videos/' + id, exist_ok=True)
     async with aiofiles.open('static/videos/' + id + '/' + file.filename, 'wb') as out_file:
-        while content := await file.read(1024):  # async read chunk
+        while content := await file.read(1024576):  # async read chunk
             await out_file.write(content)  # async write chunk
 
     return {"Result": "OK"}

@@ -24,7 +24,8 @@ class VideoModel(BaseModel):
     files: Optional[List[VideoFile]]
     categories: Optional[List[str]] = None
     libraries: Optional[List[str]] = None
-    unlisted: bool = True
+    unlisted: bool = False
+    private: bool = False
     password: Optional[str] = None
 
     class Config:
@@ -55,6 +56,7 @@ class VideoModel(BaseModel):
                     "patapsco/music"
                 },
                 "unlisted": "False",
+                "private": "False",
             }
         }
 
@@ -69,7 +71,8 @@ class UpdateVideoModel(BaseModel):
     files: Optional[List[VideoFile]]
     categories: Optional[List[str]] = None
     library: Optional[List[str]] = None
-    unlisted: Optional[bool] = True
+    unlisted: Optional[bool] = False
+    private: Optional[bool] = False
     password: Optional[str] = None
 
     class Config:
