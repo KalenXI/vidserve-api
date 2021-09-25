@@ -14,8 +14,9 @@ optional_auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://1
 router = APIRouter()
 
 
-@router.post("/", response_description="Add new library")
-async def create_library(request: Request, library: LibraryModel = Body(...)):
+@router.post("/", response_description="Add new library", dependencies=[Depends(auth.implicit_scheme)])
+async def create_library(request: Request, library: LibraryModel = Body(...),
+                         user: Auth0User = Security(auth.get_user)):
     library = jsonable_encoder(library)
     new_library = await request.app.mongodb["libraries"].insert_one(library)
     created_library = await request.app.mongodb["libraries"].find_one(
@@ -110,8 +111,9 @@ async def show_library(id: str, request: Request, passwd: Optional[str] = None, 
     raise HTTPException(status_code=404, detail=f"Task {id} not found")
 
 
-@router.put("/{id}", response_description="Update a library")
-async def update_library(id: str, request: Request, video: UpdateLibraryModel = Body(...)):
+@router.put("/{id}", response_description="Update a library", dependencies=[Depends(auth.implicit_scheme)])
+async def update_library(id: str, request: Request, video: UpdateLibraryModel = Body(...),
+                         user: Auth0User = Security(auth.get_user)):
     video = {k: v for k, v in video.dict().items() if v is not None}
 
     if len(video) >= 1:
@@ -123,15 +125,5 @@ async def update_library(id: str, request: Request, video: UpdateLibraryModel = 
 
     if (existing_video := await request.app.mongodb["libraries"].find_one({"_id": id})) is not None:
         return existing_video
-
-    raise HTTPException(status_code=404, detail=f"Task {id} not found")
-
-
-@router.delete("/{id}", response_description="Delete Video")
-async def delete_video(id: str, request: Request):
-    delete_result = await request.app.mongodb["libraries"].delete_one({"_id": id})
-
-    if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
     raise HTTPException(status_code=404, detail=f"Task {id} not found")
