@@ -1,4 +1,5 @@
 import asyncio
+import shutil
 
 import aiofiles
 import os
@@ -6,14 +7,18 @@ import sys
 import ffmpeg_streaming
 import datetime
 from ffmpeg_streaming import Formats, Bitrate
-from fastapi import APIRouter, Body, Request, HTTPException, status, File, UploadFile, BackgroundTasks
+from fastapi import APIRouter, Body, Request, HTTPException, status, File, UploadFile, BackgroundTasks, Depends, \
+    Security, Response
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from fastapi_auth0 import Auth0, Auth0User
 from pymongo import MongoClient
 
 from .models import VideoModel, UpdateVideoModel
 
 router = APIRouter()
+
+auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://10.0.0.238:8000')
 
 
 def monitor(ffmpeg, duration, time_, time_left, process):
@@ -97,11 +102,12 @@ async def update_video(id: str, request: Request, video: UpdateVideoModel = Body
     raise HTTPException(status_code=404, detail=f"Task {id} not found")
 
 
-@router.delete("/{id}", response_description="Delete Video")
-async def delete_video(id: str, request: Request):
-    delete_result = await request.app.mongodb["tasks"].delete_one({"_id": id})
+@router.delete("/{id}", response_description="Delete Video", dependencies=[Depends(auth.implicit_scheme)])
+async def delete_video(id: str, request: Request, user: Auth0User = Security(auth.get_user)):
+    delete_result = await request.app.mongodb["videos"].delete_one({"_id": id})
 
     if delete_result.deleted_count == 1:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        shutil.rmtree('static/videos/' + id, ignore_errors=True)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    raise HTTPException(status_code=404, detail=f"Task {id} not found")
+    raise HTTPException(status_code=404, detail=f"Video {id} not found")
