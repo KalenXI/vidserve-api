@@ -1,9 +1,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import uvicorn
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_auth0 import Auth0, Auth0User
+from dotenv import load_dotenv
 import ffmpeg_streaming
 from ffmpeg_streaming import Formats, Bitrate
 import datetime
@@ -14,7 +16,9 @@ from apps.library.routers import router as library_router
 from apps.user.routers import router as user_router
 from apps.jobs.routers import router as jobs_router
 
-auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://10.0.0.238:8000', scopes={'read:test': ''})
+load_dotenv()
+
+auth = Auth0(domain=os.environ['AUTH0_DOMAIN'], api_audience=os.environ['AUTH0_AUDIENCE'], scopes={'read:test': ''})
 app = FastAPI()
 
 origins = [
@@ -36,7 +40,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_db_client():
     app.mongodb_client = AsyncIOMotorClient(
-        "mongodb://kevin:narfpoit@10.0.0.10:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false")
+        os.environ['MONGODB_URL'])
     app.mongodb = app.mongodb_client["vidserver"]
 
 

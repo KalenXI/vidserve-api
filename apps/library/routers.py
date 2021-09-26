@@ -7,9 +7,13 @@ from passlib.hash import sha256_crypt
 from fastapi_auth0 import Auth0, Auth0User
 
 from .models import LibraryModel, UpdateLibraryModel
+from dotenv import load_dotenv
+import os
 
-auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://10.0.0.238:8000', scopes={'read:test': ''})
-optional_auth = Auth0(domain='dev-uxge00vy.us.auth0.com', api_audience='http://10.0.0.238:8000', auto_error=False)
+load_dotenv()
+
+auth = Auth0(domain=os.environ['AUTH0_DOMAIN'], api_audience=os.environ['AUTH0_AUDIENCE'], scopes={'read:test': ''})
+optional_auth = Auth0(domain=os.environ['AUTH0_DOMAIN'], api_audience=os.environ['AUTH0_AUDIENCE'], auto_error=False)
 
 router = APIRouter()
 
